@@ -1,4 +1,6 @@
-int bpm = 120; //max_200
+float test_time = 0;
+
+int bpm = 120;
 int divide = 32;
 int time = 0;
 int count = 0;
@@ -14,10 +16,17 @@ int receivePort = 12345;
 OscP5 oscP5;
 NetAddress myRemoteLocation;
 
+//timer setting
+import java.util.TimerTask;
+import java.util.Timer;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+Timer timer = null;
+
 void setup() {
   size(200, 200);
   background(255);
-  frameRate(30);
+  frameRate(60);
   
   //start oscP5
   oscP5 = new OscP5(this,receivePort);
@@ -34,10 +43,29 @@ void setup() {
   for(int i=0; i<divide; i++){
     line(points[i].x, points[i].y, points[(i+1)%divide].x, points[(i+1)%divide].y);
   }
+  
+  //timer set
+  timer = new Timer();
+  OtherRun otherRun = new OtherRun();
+  long dur = 60 * 1000 / bpm / 8;
+  timer.scheduleAtFixedRate( otherRun, 0, dur );
+}
+
+class OtherRun extends TimerTask {
+  @Override
+  public void run() {
+    count = (count+1)%divide;
+    
+    //send osc message
+    OscMessage myMessage = new OscMessage("/ps");
+    myMessage.add(count);    
+    myMessage.add(radius[count]);
+    oscP5.send(myMessage, myRemoteLocation);
+  }
 }
 
 void draw() {
-  
+    
   //cal points when mouse pressed
   if(mousePressed) {
     float y = -1 * (mouseY-height/2);
@@ -57,31 +85,16 @@ void draw() {
     }
   }
   
-  //send osc & draw pointer
-  int delta = millis() - time;
-  float dur = 60 * 1000 / bpm / 8;
-  if(delta>=dur){
-    
-    //send osc
-    OscMessage myMessage = new OscMessage("/ps");
-    myMessage.add(count);    
-    myMessage.add(radius[count]);
-    oscP5.send(myMessage, myRemoteLocation);
-    
-    //draw pointer
-    background(255);
-    translate(width/2, height/2);
-    for (int i=0; i<divide; i++) {
-      line(points[i].x, points[i].y, points[(i+1)%divide].x, points[(i+1)%divide].y);
-    }    
-    line(0, 0, 
-      radius[count] * cos(-(count)*TWO_PI/divide), 
-      radius[count] * sin(-(count)*TWO_PI/divide));
-    
-    //z set
-    time = millis();
-    count = (count+1) % divide;
+  //draw pointer
+  background(255);
+  translate(width/2, height/2);
+  for (int i=0; i<divide; i++) {
+    line(points[i].x, points[i].y, points[(i+1)%divide].x, points[(i+1)%divide].y);
   }
-  
-  
+  int counter = divide - (count+1);
+  line(0, 0, 
+    radius[count] * cos(-count*TWO_PI/divide), 
+    radius[count] * sin(-count*TWO_PI/divide)
+   );
+
 }
